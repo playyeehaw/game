@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YEEHAW! - Wild West Showdown Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&family=Arvo:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Chosen Palette: Frontier Vibrant (Based on Style Guide) -->
+    <!-- Application Structure Plan: 
+         The app is designed as an interactive rulebook for the "Variety" version of the game.
+         1. Hero Section: Wild West Showdown title and 20-30 min duration.
+         2. "The Armory": Visualizes 10 groups of 5 dice using Inline SVGs around a CSS Saloon Table.
+         3. "The Six-Shooter": An accordion-style guide for the 6 distinct mini-games with prominent emoji identifiers.
+         4. "The Shootout": A compact tie-breaker duel simulator.
+         5. "Contact the Designer": Final attribution and contact info.
+    -->
+    
+    <!-- CONFIRMATION: NO SVG image files used (only inline code). NO Mermaid JS used. -->
+
+    <style>
+        :root {
+            --parchment: #f4e4bc;
+            --leather: #3d2b1f;
+            --rust: #a0522d;
+            --gold: #d4af37;
+            --midnight: #1a0f0a;
+            --wood: #2d1b0d;
+        }
+
+        body {
+            background-color: var(--midnight);
+            font-family: 'Arvo', serif;
+            color: var(--leather);
+            overflow-x: hidden;
+        }
+
+        .font-rye { font-family: 'Rye', cursive; }
+        .font-elite { font-family: 'Special Elite', cursive; }
+        .font-arvo { font-family: 'Arvo', serif; }
+
+        .bg-wood {
+            background-color: var(--wood);
+            background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 10px);
+        }
+
+        /* Fixed parchment background using CSS instead of external image URL */
+        .parchment-card {
+            background-color: var(--parchment);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.2) 0%, transparent 100%),
+                repeating-radial-gradient(rgba(0,0,0,0.01) 0 1px, transparent 0 20px);
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .rope-border {
+            border: 8px solid transparent;
+            border-image: radial-gradient(#8b4513 20%, #3d2b1f 80%) 1;
+        }
+
+        .btn-cowboy {
+            background-color: var(--leather);
+            color: var(--parchment);
+            border: 2px solid var(--gold);
+            font-family: 'Rye', cursive;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-cowboy:hover {
+            background-color: var(--rust);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .player-stack {
+            background: rgba(61, 43, 31, 0.08);
+            border: 1px dashed var(--leather);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            min-width: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Saloon Table Styles */
+        .saloon-table {
+            background: var(--leather);
+            border: 12px solid #5a3d2b;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 0 100px rgba(0,0,0,0.5);
+            border-radius: 120px;
+            position: relative;
+        }
+        
+        .table-felt {
+            position: absolute;
+            inset: 15px;
+            border-radius: 100px;
+            background: #2d1b0d;
+            border: 2px solid var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+        }
+
+        /* Accordion Styles */
+        .accordion-header {
+            background-color: var(--wood);
+            border: 2px solid var(--leather);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .accordion-header:hover {
+            background-color: #3d2b1f;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-item.active .accordion-content {
+            max-height: 600px;
+        }
+        .accordion-item.active .accordion-header {
+            border-bottom: 2px solid var(--gold);
+            color: var(--gold);
+        }
+
+        .dice-svg {
+            filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.2));
+        }
+
+        .round-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- HERO SECTION -->
+    <header class="bg-wood py-12 px-4 border-b-4 border-[#d4af37]">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="font-rye text-5xl md:text-8xl text-[#d4af37] mb-2 drop-shadow-lg tracking-wide uppercase">YEEHAW!</h1>
+            <p class="font-elite text-[#f4e4bc] text-xl md:text-2xl tracking-widest uppercase mb-4">Wild West Showdown</p>
+            <p class="font-arvo text-[#d4af37] text-sm uppercase tracking-widest mb-10">The High-Stakes Variety Dice Game</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div class="parchment-card p-6 rope-border transform rotate-1 rounded-lg">
+                    <div class="font-rye text-4xl text-[#a0522d]">2-10</div>
+                    <div class="font-elite text-sm uppercase mt-1">Players</div>
+                </div>
+                <div class="parchment-card p-6 rope-border transform -rotate-1 rounded-lg">
+                    <div class="font-rye text-4xl text-[#a0522d]">20-30</div>
+                    <div class="font-elite text-sm uppercase mt-1">Minutes</div>
+                </div>
+                <div class="parchment-card p-6 rope-border transform rotate-1 rounded-lg">
+                    <div class="font-rye text-4xl text-[#a0522d]">5+</div>
+                    <div class="font-elite text-sm uppercase mt-1">Ages</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-6xl mx-auto px-4 py-12 space-y-16">
+
+        <!-- SECTION 1: THE ARMORY (50 Dice Layout with SVGs) -->
+        <section id="components">
+            <div class="parchment-card p-8 rounded-lg shadow-2xl overflow-hidden">
+                <div class="flex flex-col space-y-8">
+                    <div class="text-center max-w-3xl mx-auto">
+                        <h2 class="font-rye text-3xl md:text-4xl text-[#3d2b1f] mb-4 uppercase tracking-wider">The Armory</h2>
+                        <p class="font-arvo text-lg mb-4 leading-relaxed text-[#3d2b1f]">
+                            Pull up a chair! Every cowboy needs their iron. In <span class="font-rye text-[#a0522d]">YEEHAW!</span>, there are <strong>50 dice</strong> total.
+                        </p>
+                        <p class="font-elite text-[#a0522d] mb-4 uppercase tracking-tighter text-sm md:text-base">
+                            50 Dice Total • 10 Seats • 5 Dice Per Player
+                        </p>
+                    </div>
+                    
+                    <!-- Table Visualization (Desktop) -->
+                    <div class="hidden lg:block relative w-full h-[500px] mb-8 mt-4">
+                        <div class="absolute inset-0 m-auto w-[65%] h-[60%] saloon-table">
+                            <div class="table-felt">
+                                <span class="font-rye text-3xl text-gold opacity-30">YEEHAW!</span>
+                            </div>
+                        </div>
+
+                        <!-- 10 Seat Layout using SVGs -->
+                        <div class="absolute top-[5%] left-[20%] player-stack" id="stack-1"></div>
+                        <div class="absolute top-[0%] left-1/2 -translate-x-1/2 player-stack" id="stack-2"></div>
+                        <div class="absolute top-[5%] right-[20%] player-stack" id="stack-3"></div>
+                        <div class="absolute top-1/2 right-[0%] -translate-y-1/2 player-stack" id="stack-4"></div>
+                        <div class="absolute bottom-[5%] right-[20%] player-stack" id="stack-5"></div>
+                        <div class="absolute bottom-[0%] left-1/2 -translate-x-1/2 player-stack" id="stack-6"></div>
+                        <div class="absolute bottom-[5%] left-[20%] player-stack" id="stack-7"></div>
+                        <div class="absolute top-1/2 left-[0%] -translate-y-1/2 player-stack" id="stack-8"></div>
+                        <div class="absolute top-[20%] left-1/2 -translate-x-1/2 player-stack -mt-12 opacity-50" style="background:none; border:none;" id="stack-9"></div>
+                        <div class="absolute bottom-[20%] left-1/2 -translate-x-1/2 player-stack -mb-12 opacity-50" style="background:none; border:none;" id="stack-10"></div>
+                    </div>
+
+                    <!-- Grid Visualization (Mobile) -->
+                    <div class="lg:hidden grid grid-cols-2 sm:grid-cols-5 gap-4" id="mobile-armory-grid">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE SIX-SHOOTER (Rules Accordion) -->
+        <section id="round-guide">
+            <div class="text-center mb-8">
+                <h2 class="font-rye text-4xl text-[#f4e4bc] mb-2 uppercase tracking-widest">The Six-Shooter</h2>
+                <p class="font-elite text-[#a0522d] uppercase tracking-widest bg-[#f4e4bc] inline-block px-4 py-1 rounded">6 Unique Mini-Games</p>
+            </div>
+
+            <div class="max-w-4xl mx-auto space-y-4">
+                <!-- Round 1: Quick Draw -->
+                <div class="accordion-item" id="item-0">
+                    <div class="accordion-header flex items-center justify-between p-6 rounded-t-lg text-[#f4e4bc]" onclick="toggleAccordion(0)">
+                        <div class="flex items-center gap-4 text-left">
+                            <span class="font-rye text-xl md:text-2xl uppercase">01. Quick Draw</span>
+                        </div>
+                        <span class="text-2xl">⚡</span>
+                    </div>
+                    <div class="accordion-content parchment-card border-x-2 border-b-2 border-leather rounded-b-lg">
+                        <div class="p-8">
+                            <span class="round-icon text-center">⚡</span>
+                            <p class="font-elite text-[#a0522d] mb-1 uppercase text-sm">Goal: Speed</p>
+                            <h4 class="font-rye text-2xl mb-4 uppercase text-[#3d2b1f]">Objective: 5-of-a-Kind</h4>
+                            <div class="font-arvo space-y-4 text-lg border-l-4 border-[#a0522d] pl-4 text-[#3d2b1f]">
+                                <p>On <strong>"ROLL 'EM!"</strong>, everyone races simultaneously. Roll all 5 dice, lock any that match the target number, and re-roll the rest immediately until all 5 match.</p>
+                                <p class="italic">The first to shout <span class="text-rust font-bold">"YEEHAW!"</span> wins the point.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round 2: High Roller -->
+                <div class="accordion-item" id="item-1">
+                    <div class="accordion-header flex items-center justify-between p-6 rounded-t-lg text-[#f4e4bc]" onclick="toggleAccordion(1)">
+                        <div class="flex items-center gap-4 text-left">
+                            <span class="font-rye text-xl md:text-2xl uppercase">02. High Roller</span>
+                        </div>
+                        <span class="text-2xl">💰</span>
+                    </div>
+                    <div class="accordion-content parchment-card border-x-2 border-b-2 border-leather rounded-b-lg">
+                        <div class="p-8">
+                            <span class="round-icon text-center">💰</span>
+                            <p class="font-elite text-[#a0522d] mb-1 uppercase text-sm">Goal: Strategy</p>
+                            <h4 class="font-rye text-2xl mb-4 uppercase text-[#3d2b1f]">Objective: Highest Sum</h4>
+                            <div class="font-arvo space-y-4 text-lg border-l-4 border-[#a0522d] pl-4 text-[#3d2b1f]">
+                                <p>You have exactly <strong>3 rolls</strong> to get the highest total sum possible. You MUST bank at least one die per roll.</p>
+                                <ul class="list-disc list-inside space-y-1 text-base">
+                                    <li>Roll 1: Bank 1+ die.</li>
+                                    <li>Roll 2: Bank 1+ additional die.</li>
+                                    <li>Roll 3: Final re-roll for whatever is left.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round 3: Low Roller -->
+                <div class="accordion-item" id="item-2">
+                    <div class="accordion-header flex items-center justify-between p-6 rounded-t-lg text-[#f4e4bc]" onclick="toggleAccordion(2)">
+                        <div class="flex items-center gap-4 text-left">
+                            <span class="font-rye text-xl md:text-2xl uppercase">03. Low Roller</span>
+                        </div>
+                        <span class="text-2xl">📉</span>
+                    </div>
+                    <div class="accordion-content parchment-card border-x-2 border-b-2 border-leather rounded-b-lg">
+                        <div class="p-8">
+                            <span class="round-icon text-center">📉</span>
+                            <p class="font-elite text-[#a0522d] mb-1 uppercase text-sm">Goal: Tension</p>
+                            <h4 class="font-rye text-2xl mb-4 uppercase text-[#3d2b1f]">Objective: Lowest Sum</h4>
+                            <div class="font-arvo space-y-4 text-lg border-l-4 border-[#a0522d] pl-4 text-[#3d2b1f]">
+                                <p>Follow the same banking rules as High Roller, but aim for the <strong>lowest total sum</strong>. Avoid high numbers and look for those 1s!</p>
+                                <p class="text-sm italic">The player with the lowest total wins the round.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round 4: Cow Poo -->
+                <div class="accordion-item" id="item-3">
+                    <div class="accordion-header flex items-center justify-between p-6 rounded-t-lg text-[#f4e4bc]" onclick="toggleAccordion(3)">
+                        <div class="flex items-center gap-4 text-left">
+                            <span class="font-rye text-xl md:text-2xl uppercase">04. Cow Poo</span>
+                        </div>
+                        <span class="text-2xl">💩</span>
+                    </div>
+                    <div class="accordion-content parchment-card border-x-2 border-b-2 border-leather rounded-b-lg">
+                        <div class="p-8">
+                            <span class="round-icon text-center">💩</span>
+                            <p class="font-elite text-[#a0522d] mb-1 uppercase text-sm">Goal: Bluffing</p>
+                            <h4 class="font-rye text-2xl mb-4 uppercase text-[#3d2b1f]">Objective: Catch a Liar</h4>
+                            <div class="font-arvo space-y-4 text-lg border-l-4 border-[#a0522d] pl-4 text-[#3d2b1f]">
+                                <p>Roll once and hide your dice. Bid on the total quantity of a specific face value on the whole table. Bidding is not turn-based—jump in anytime!</p>
+                                <p>Shout <strong>"COW POO!"</strong> if you think the current bid is a lie. If they lied, you win the point; if they were honest, the bidder wins.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round 5: Snake Bite -->
+                <div class="accordion-item" id="item-4">
+                    <div class="accordion-header flex items-center justify-between p-6 rounded-t-lg text-[#f4e4bc]" onclick="toggleAccordion(4)">
+                        <div class="flex items-center gap-4 text-left">
+                            <span class="font-rye text-xl md:text-2xl uppercase">05. Snake Bite</span>
+                        </div>
+                        <span class="text-2xl">🐍</span>
+                    </div>
+                    <div class="accordion-content parchment-card border-x-2 border-b-2 border-leather rounded-b-lg">
+                        <div class="p-8">
+                            <span class="round-icon text-center">🐍</span>
+                            <p class="font-elite text-[#a0522d] mb-1 uppercase text-sm">Goal: Survival</p>
+                            <h4 class="font-rye text-2xl mb-4 uppercase text-[#3d2b1f]">Objective: Last Man Standing</h4>
+                            <div class="font-arvo space-y-4 text-lg border-l-4 border-[#a0522d] pl-4 text-[#3d2b1f]">
+                                <p>The Caller picks a <strong>Poison Number</strong>. Everyone rolls current dice once per pulse. When the Caller shouts <strong>"FREEZE!"</strong>, any dice showing the poison number are removed.</p>
+                                <p class="italic">Survive until you are the only one left with dice to win the round.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round 6: Bust'em -->
+                <div class="accordion-item" id="item-5">
+                    <div class="accordion-header flex items-center justify-between p-6 rounded-t-lg text-[#f4e4bc]" onclick="toggleAccordion(5)">
+                        <div class="flex items-center gap-4 text-left">
+                            <span class="font-rye text-xl md:text-2xl uppercase">06. Bust'em</span>
+                        </div>
+                        <span class="text-2xl">🃏</span>
+                    </div>
+                    <div class="accordion-content parchment-card border-x-2 border-b-2 border-leather rounded-b-lg">
+                        <div class="p-8">
+                            <span class="round-icon text-center">🃏</span>
+                            <p class="font-elite text-[#a0522d] mb-1 uppercase text-sm">Goal: Push Your Luck</p>
+                            <h4 class="font-rye text-2xl mb-4 uppercase text-[#3d2b1f]">Objective: Closest to 21</h4>
+                            <div class="font-arvo space-y-4 text-lg border-l-4 border-[#a0522d] pl-4 text-[#3d2b1f]">
+                                <p>Roll dice one at a time and mentally add your total. Stop whenever you want to lock in your score.</p>
+                                <p><strong>DANGER:</strong> If you exceed 21, you BUST and score 0. The player closest to 21 without going over wins the final point.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE SHOOTOUT (Compact Sim) -->
+        <section id="tiebreaker">
+            <div class="max-w-2xl mx-auto parchment-card p-6 rounded-lg rope-border shadow-xl">
+                <div class="text-center mb-6">
+                    <h2 class="font-rye text-2xl text-[#3d2b1f] border-b-2 border-[#a0522d] pb-2 uppercase inline-block tracking-widest">The Shootout</h2>
+                    <p class="font-arvo text-sm mt-2 text-[#3d2b1f]">Tied for the total win? Settle it in a high-stakes duel.</p>
+                </div>
+
+                <div class="bg-[#3d2b1f] p-4 rounded-xl text-center shadow-inner border-2 border-gold max-w-sm mx-auto">
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        <div class="flex flex-col items-center">
+                            <p class="font-elite text-[#f4e4bc] text-[10px] mb-1 uppercase">You</p>
+                            <div id="die1-container" class="dice-svg"></div>
+                        </div>
+                        <div class="font-rye text-[#a0522d] text-xl">VS</div>
+                        <div class="flex flex-col items-center">
+                            <p class="font-elite text-[#f4e4bc] text-[10px] mb-1 uppercase">Rival</p>
+                            <div id="die2-container" class="dice-svg"></div>
+                        </div>
+                    </div>
+                    <div id="duel-result" class="h-6 font-rye text-[#f4e4bc] text-sm mb-4 opacity-0 uppercase tracking-widest">RESULT</div>
+                    <button onclick="rollDuel()" class="btn-cowboy w-full py-2 text-lg rounded text-white shadow-md">ROLL FOR THE DRAW</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: CONTACT THE DESIGNER -->
+        <section id="contact" class="pb-12 max-w-2xl mx-auto">
+            <div class="parchment-card p-6 rounded-lg rope-border text-center">
+                <h2 class="font-rye text-2xl text-[#3d2b1f] mb-4 uppercase tracking-wider">Contact the Designer</h2>
+                <div class="space-y-1 font-arvo text-[#3d2b1f]">
+                    <p class="text-lg font-bold text-[#a0522d]">Gabriel Marchant</p>
+                    <p class="text-sm">
+                        <a href="mailto:gabemarchant@proton.me" class="hover:text-[#a0522d] underline transition-colors">gabemarchant@proton.me</a>
+                    </p>
+                    <p class="text-[10px] opacity-60 mt-2">Phone: (214) 490-5906</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-[#1a0f0a] border-t border-[#3d2b1f] py-8 text-center text-[#f4e4bc]/40">
+        <p class="font-rye text-xl text-gold mb-1 tracking-widest uppercase">YEEHAW!™</p>
+        <p class="font-elite text-[10px] uppercase tracking-widest">© 2026 Gabriel Marchant. All Rights Reserved.</p>
+    </footer>
+
+    <script>
+        // Dice SVG Factory
+        function getDiceSVG(value, size = 64) {
+            const dots = {
+                1: [[50, 50]],
+                2: [[25, 25], [75, 75]],
+                3: [[25, 25], [50, 50], [75, 75]],
+                4: [[25, 25], [25, 75], [75, 25], [75, 75]],
+                5: [[25, 25], [25, 75], [50, 50], [75, 25], [75, 75]],
+                6: [[25, 25], [25, 50], [25, 75], [75, 25], [75, 50], [75, 75]]
+            };
+            
+            let dotCircles = dots[value].map(pos => `<circle cx="${pos[0]}" cy="${pos[1]}" r="8" fill="#3d2b1f" />`).join('');
+            
+            return `
+                <svg width="${size}" height="${size}" viewBox="0 0 100 100">
+                    <rect x="5" y="5" width="90" height="90" rx="15" fill="white" stroke="#3d2b1f" stroke-width="4"/>
+                    ${dotCircles}
+                </svg>
+            `;
+        }
+
+        function populateArmory() {
+            const seats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            const mobileGrid = document.getElementById('mobile-armory-grid');
+
+            seats.forEach(seat => {
+                const diceHtml = Array.from({length: 5}, () => getDiceSVG(Math.floor(Math.random() * 6) + 1, 20)).join('');
+                const label = `P${seat}`;
+                
+                // Fill Desktop Seats
+                const desktopStack = document.getElementById(`stack-${seat}`);
+                if (desktopStack) {
+                    desktopStack.innerHTML = `<p class="font-elite text-[10px] mb-1 uppercase">${label}</p><div class="flex gap-1">${diceHtml}</div>`;
+                }
+
+                // Fill Mobile Grid
+                const mobileStack = document.createElement('div');
+                mobileStack.className = 'player-stack';
+                mobileStack.innerHTML = `<p class="font-elite text-[10px] mb-1 uppercase">${label}</p><div class="flex justify-center flex-wrap gap-1">${diceHtml}</div>`;
+                mobileGrid.appendChild(mobileStack);
+            });
+        }
+
+        function toggleAccordion(index) {
+            const items = document.querySelectorAll('.accordion-item');
+            const item = document.getElementById(`item-${index}`);
+            const isActive = item.classList.contains('active');
+
+            items.forEach(i => {
+                i.classList.remove('active');
+            });
+
+            if (!isActive) {
+                item.classList.add('active');
+            }
+        }
+
+        function rollDuel() {
+            const die1El = document.getElementById('die1-container');
+            const die2El = document.getElementById('die2-container');
+            const resultEl = document.getElementById('duel-result');
+
+            die1El.classList.add('shake');
+            die2El.classList.add('shake');
+            resultEl.style.opacity = '0';
+
+            setTimeout(() => {
+                die1El.classList.remove('shake');
+                die2El.classList.remove('shake');
+                
+                const v1 = Math.floor(Math.random() * 6) + 1;
+                const v2 = Math.floor(Math.random() * 6) + 1;
+                
+                die1El.innerHTML = getDiceSVG(v1, 64);
+                die2El.innerHTML = getDiceSVG(v2, 64);
+                
+                resultEl.style.opacity = '1';
+                if (v1 > v2) { resultEl.innerText = "YOU WIN!"; resultEl.style.color = "#27ae60"; }
+                else if (v2 > v1) { resultEl.innerText = "RIVAL WINS!"; resultEl.style.color = "#c0392b"; }
+                else { resultEl.innerText = "DRAW!"; resultEl.style.color = "#f4e4bc"; }
+            }, 500);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateArmory();
+            document.getElementById('die1-container').innerHTML = getDiceSVG(1, 64);
+            document.getElementById('die2-container').innerHTML = getDiceSVG(1, 64);
+            toggleAccordion(0);
+        });
+    </script>
+</body>
+</html>
